@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'amplifyconfiguration.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await _configureAmplify();
   runApp(const MyApp());
+}
+
+Future<void> _configureAmplify() async {
+  try {
+    final auth = AmplifyAuthCognito();
+    await Amplify.addPlugin(auth);
+    await Amplify.configure(amplifyconfig);
+  } catch (e) {
+    safePrint('Amplify configure error: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -30,7 +45,119 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _isSignedIn = false;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    try {
+      final session = await Amplify.Auth.fetchAuthSession();
+      setState(() {
+        _isSignedIn = session.isSignedIn;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isSignedIn = false;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_isSignedIn) {
+      return const MyHomePage(title: 'Flutter Demo Home Page');
+    } else {
+      return SignInPage(onSignedIn: _checkAuth);
+    }
+  }
+}
+
+class SignInPage extends StatefulWidget {
+  final VoidCallback onSignedIn;
+  const SignInPage({super.key, required this.onSignedIn});
+  @override
+  State<SignInPage> createState() => _SignInPageState();
+}
+
+class _SignInPageState extends State<SignInPage> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _error;
+  bool _loading = false;
+
+  Future<void> _signIn() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final res = await Amplify.Auth.signIn(
+        username: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (res.isSignedIn) {
+        widget.onSignedIn();
+      } else {
+        setState(() { _error = 'サインインに失敗しました'; });
+      }
+    } on AuthException catch (e) {
+      setState(() { _error = e.message; });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('サインイン')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(labelText: 'メールアドレス'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'パスワード'),
+              obscureText: true,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: const TextStyle(color: Colors.red)),
+            ],
+            const SizedBox(height: 16),
+            _loading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: _signIn,
+                    child: const Text('サインイン'),
+                  ),
+          ],
+        ),
+      ),
     );
   }
 }

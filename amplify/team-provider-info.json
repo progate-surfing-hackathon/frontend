@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-progatesurfingapp-dev-9f1c2-authRole",
+      "UnauthRoleArn": "arn:aws:iam::277707112446:role/amplify-progatesurfingapp-dev-9f1c2-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::277707112446:role/amplify-progatesurfingapp-dev-9f1c2-authRole",
+      "Region": "ap-northeast-1",
+      "DeploymentBucketName": "amplify-progatesurfingapp-dev-9f1c2-deployment",
+      "UnauthRoleName": "amplify-progatesurfingapp-dev-9f1c2-unauthRole",
+      "StackName": "amplify-progatesurfingapp-dev-9f1c2",
+      "StackId": "arn:aws:cloudformation:ap-northeast-1:277707112446:stack/amplify-progatesurfingapp-dev-9f1c2/be2a32a0-57e1-11f0-95fe-0ebf9e29e955",
+      "AmplifyAppId": "d21r3jq0rjzc0q"
+    },
+    "categories": {
+      "auth": {
+        "progatesurfingapp7dfa3c4f": {}
+      }
+    }
+  }
+}
