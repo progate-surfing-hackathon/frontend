@@ -106,6 +106,7 @@ class _SignInPageState extends State<SignInPage> {
   final _passwordController = TextEditingController();
   String? _error;
   bool _loading = false;
+  bool _obscurePassword = true;
 
   Future<void> _signIn() async {
     setState(() { _loading = true; _error = null; });
@@ -120,7 +121,45 @@ class _SignInPageState extends State<SignInPage> {
         setState(() { _error = 'サインインに失敗しました'; });
       }
     } on AuthException catch (e) {
-      setState(() { _error = e.message; });
+      if (e.runtimeType.toString() == 'UserNotFoundException' || e.message.contains('User does not exist')) {
+        // ユーザーが存在しない場合はサインアップ
+        try {
+          await Amplify.Auth.signUp(
+            username: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+            options: SignUpOptions(userAttributes: {
+              AuthUserAttributeKey.email: _emailController.text.trim(),
+            }),
+          );
+          // サインアップ後に認証コード入力画面へ遷移
+          if (mounted) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ConfirmCodePage(
+                  email: _emailController.text.trim(),
+                  onConfirmed: _signIn,
+                ),
+              ),
+            );
+          }
+        } on AuthException catch (e2) {
+          setState(() { _error = 'サインアップに失敗しました: ${e2.message}'; });
+        }
+      } else if (e.runtimeType.toString() == 'UserNotConfirmedException' || e.message.contains('User is not confirmed')) {
+        // ユーザーが未確認の場合は認証コード入力画面へ遷移
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ConfirmCodePage(
+                email: _emailController.text.trim(),
+                onConfirmed: _signIn,
+              ),
+            ),
+          );
+        }
+      } else {
+        setState(() { _error = e.message; });
+      }
     } finally {
       setState(() { _loading = false; });
     }
@@ -128,34 +167,87 @@ class _SignInPageState extends State<SignInPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('サインイン')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'メールアドレス'),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'パスワード'),
-              obscureText: true,
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-            ],
-            const SizedBox(height: 16),
-            _loading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _signIn,
-                    child: const Text('サインイン'),
+      backgroundColor: theme.colorScheme.background,
+      appBar: AppBar(
+        title: const Text('サインイン'),
+        backgroundColor: theme.colorScheme.primary,
+        elevation: 0,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-          ],
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(Icons.surfing, size: 64, color: theme.colorScheme.primary),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'メールアドレス',
+                      prefixIcon: const Icon(Icons.email),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'パスワード',
+                      prefixIcon: const Icon(Icons.lock),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                        onPressed: () {
+                          setState(() { _obscurePassword = !_obscurePassword; });
+                        },
+                      ),
+                    ),
+                    obscureText: _obscurePassword,
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                  ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    height: 48,
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: theme.colorScheme.onPrimary,
+                              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: _signIn,
+                            icon: const Icon(Icons.login),
+                            label: const Text('サインイン / 新規登録'),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -244,6 +336,133 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+// 認証コード入力画面
+class ConfirmCodePage extends StatefulWidget {
+  final String email;
+  final VoidCallback onConfirmed;
+  const ConfirmCodePage({super.key, required this.email, required this.onConfirmed});
+
+  @override
+  State<ConfirmCodePage> createState() => _ConfirmCodePageState();
+}
+
+class _ConfirmCodePageState extends State<ConfirmCodePage> {
+  final _codeController = TextEditingController();
+  String? _error;
+  bool _loading = false;
+  bool _resent = false;
+
+  Future<void> _confirm() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final res = await Amplify.Auth.confirmSignUp(
+        username: widget.email,
+        confirmationCode: _codeController.text.trim(),
+      );
+      if (res.isSignUpComplete) {
+        widget.onConfirmed();
+        Navigator.of(context).pop();
+      } else {
+        setState(() { _error = '認証に失敗しました'; });
+      }
+    } on AuthException catch (e) {
+      setState(() { _error = e.message; });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
+  Future<void> _resend() async {
+    setState(() { _loading = true; _error = null; _resent = false; });
+    try {
+      await Amplify.Auth.resendSignUpCode(username: widget.email);
+      setState(() { _resent = true; });
+    } on AuthException catch (e) {
+      setState(() { _error = e.message; });
+    } finally {
+      setState(() { _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('認証コードの確認')),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(Icons.verified, size: 64, color: Colors.green),
+                  const SizedBox(height: 16),
+                  Text('認証コードをメールに送信しました', textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _codeController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: '認証コード',
+                      prefixIcon: const Icon(Icons.numbers),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                  ],
+                  if (_resent) ...[
+                    const SizedBox(height: 12),
+                    const Text('認証コードを再送信しました', style: TextStyle(color: Colors.green)),
+                  ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    height: 48,
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: theme.colorScheme.onPrimary,
+                              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: _confirm,
+                            icon: const Icon(Icons.verified_user),
+                            label: const Text('認証'),
+                          ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _loading ? null : _resend,
+                    child: const Text('認証コードを再送信'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
