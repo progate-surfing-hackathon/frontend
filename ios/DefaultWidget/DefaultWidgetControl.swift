@@ -24,7 +24,7 @@ struct DefaultWidgetControl: ControlWidget {
             }
         }
         .displayName("Timer")
-        .description("A an example control that runs a timer.")
+        .description("An example control that runs a timer.")
     }
 }
 
