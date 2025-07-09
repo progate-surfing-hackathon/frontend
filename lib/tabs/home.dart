@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../healthkit/healthkit.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key, required this.title});
@@ -20,16 +21,18 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int _counter = 0;
+  int? _steps;
 
-  void _incrementCounter() {
+  Future<void> _incrementCounter() async {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
       _counter++;
     });
+    // 歩数データ取得
+    final steps = await fetchStepData();
+    setState(() {
+      _steps = steps;
+    });
+    print('steps: $steps');
   }
 
   @override
@@ -74,6 +77,11 @@ class _HomeState extends State<Home> {
             Text(
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _steps != null ? 'Steps today: $_steps' : 'Steps not loaded',
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
           ],
         ),
