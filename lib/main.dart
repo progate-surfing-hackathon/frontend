@@ -87,7 +87,7 @@ class _AuthGateState extends State<AuthGate> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_isSignedIn) {
-      return const MyHomePage(title: 'Flutter Demo Home Page');
+      return const MainScreen(title: 'Flutter Demo Home Page');
     } else {
       return SignInPage(onSignedIn: _checkAuth);
     }
@@ -109,7 +109,10 @@ class _SignInPageState extends State<SignInPage> {
   bool _obscurePassword = true;
 
   Future<void> _signIn() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await Amplify.Auth.signIn(
         username: _emailController.text.trim(),
@@ -118,18 +121,23 @@ class _SignInPageState extends State<SignInPage> {
       if (res.isSignedIn) {
         widget.onSignedIn();
       } else {
-        setState(() { _error = 'サインインに失敗しました'; });
+        setState(() {
+          _error = 'サインインに失敗しました';
+        });
       }
     } on AuthException catch (e) {
-      if (e.runtimeType.toString() == 'UserNotFoundException' || e.message.contains('User does not exist')) {
+      if (e.runtimeType.toString() == 'UserNotFoundException' ||
+          e.message.contains('User does not exist')) {
         // ユーザーが存在しない場合はサインアップ
         try {
           await Amplify.Auth.signUp(
             username: _emailController.text.trim(),
             password: _passwordController.text.trim(),
-            options: SignUpOptions(userAttributes: {
-              AuthUserAttributeKey.email: _emailController.text.trim(),
-            }),
+            options: SignUpOptions(
+              userAttributes: {
+                AuthUserAttributeKey.email: _emailController.text.trim(),
+              },
+            ),
           );
           // サインアップ後に認証コード入力画面へ遷移
           if (mounted) {
@@ -143,9 +151,12 @@ class _SignInPageState extends State<SignInPage> {
             );
           }
         } on AuthException catch (e2) {
-          setState(() { _error = 'サインアップに失敗しました: ${e2.message}'; });
+          setState(() {
+            _error = 'サインアップに失敗しました: ${e2.message}';
+          });
         }
-      } else if (e.runtimeType.toString() == 'UserNotConfirmedException' || e.message.contains('User is not confirmed')) {
+      } else if (e.runtimeType.toString() == 'UserNotConfirmedException' ||
+          e.message.contains('User is not confirmed')) {
         // ユーザーが未確認の場合は認証コード入力画面へ遷移
         if (mounted) {
           Navigator.of(context).push(
@@ -158,10 +169,14 @@ class _SignInPageState extends State<SignInPage> {
           );
         }
       } else {
-        setState(() { _error = e.message; });
+        setState(() {
+          _error = e.message;
+        });
       }
     } finally {
-      setState(() { _loading = false; });
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
@@ -196,7 +211,11 @@ class _SignInPageState extends State<SignInPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.surfing, size: 64, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.surfing,
+                    size: 64,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _emailController,
@@ -204,7 +223,9 @@ class _SignInPageState extends State<SignInPage> {
                     decoration: InputDecoration(
                       labelText: 'メールアドレス',
                       prefixIcon: const Icon(Icons.email),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -213,11 +234,19 @@ class _SignInPageState extends State<SignInPage> {
                     decoration: InputDecoration(
                       labelText: 'パスワード',
                       prefixIcon: const Icon(Icons.lock),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
                         onPressed: () {
-                          setState(() { _obscurePassword = !_obscurePassword; });
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
                         },
                       ),
                     ),
@@ -234,10 +263,15 @@ class _SignInPageState extends State<SignInPage> {
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               backgroundColor: theme.colorScheme.primary,
                               foregroundColor: theme.colorScheme.onPrimary,
-                              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              textStyle: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             onPressed: _signIn,
                             icon: const Icon(Icons.login),
@@ -249,6 +283,54 @@ class _SignInPageState extends State<SignInPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key, required this.title});
+  final String title;
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+
+  late final List<Widget> _widgetOptions;
+
+  @override
+  void initState() {
+    super.initState();
+    _widgetOptions = <Widget>[
+      MyHomePage(title: widget.title),
+      const AccountPage(),
+    ];
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_circle),
+            label: 'Account',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        onTap: _onItemTapped,
       ),
     );
   }
@@ -288,12 +370,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
+    // This method retruns every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
+
     return Scaffold(
       appBar: AppBar(
         // TRY THIS: Try changing the color here to a specific color (to
@@ -340,11 +423,24 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+class AccountPage extends StatelessWidget {
+  const AccountPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Placeholder();
+  }
+}
+
 // 認証コード入力画面
 class ConfirmCodePage extends StatefulWidget {
   final String email;
   final VoidCallback onConfirmed;
-  const ConfirmCodePage({super.key, required this.email, required this.onConfirmed});
+  const ConfirmCodePage({
+    super.key,
+    required this.email,
+    required this.onConfirmed,
+  });
 
   @override
   State<ConfirmCodePage> createState() => _ConfirmCodePageState();
@@ -357,7 +453,10 @@ class _ConfirmCodePageState extends State<ConfirmCodePage> {
   bool _resent = false;
 
   Future<void> _confirm() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await Amplify.Auth.confirmSignUp(
         username: widget.email,
@@ -367,24 +466,40 @@ class _ConfirmCodePageState extends State<ConfirmCodePage> {
         widget.onConfirmed();
         Navigator.of(context).pop();
       } else {
-        setState(() { _error = '認証に失敗しました'; });
+        setState(() {
+          _error = '認証に失敗しました';
+        });
       }
     } on AuthException catch (e) {
-      setState(() { _error = e.message; });
+      setState(() {
+        _error = e.message;
+      });
     } finally {
-      setState(() { _loading = false; });
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
   Future<void> _resend() async {
-    setState(() { _loading = true; _error = null; _resent = false; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _resent = false;
+    });
     try {
       await Amplify.Auth.resendSignUpCode(username: widget.email);
-      setState(() { _resent = true; });
+      setState(() {
+        _resent = true;
+      });
     } on AuthException catch (e) {
-      setState(() { _error = e.message; });
+      setState(() {
+        _error = e.message;
+      });
     } finally {
-      setState(() { _loading = false; });
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
@@ -416,7 +531,11 @@ class _ConfirmCodePageState extends State<ConfirmCodePage> {
                 children: [
                   const Icon(Icons.verified, size: 64, color: Colors.green),
                   const SizedBox(height: 16),
-                  Text('認証コードをメールに送信しました', textAlign: TextAlign.center, style: theme.textTheme.titleMedium),
+                  Text(
+                    '認証コードをメールに送信しました',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _codeController,
@@ -424,7 +543,9 @@ class _ConfirmCodePageState extends State<ConfirmCodePage> {
                     decoration: InputDecoration(
                       labelText: '認証コード',
                       prefixIcon: const Icon(Icons.numbers),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                   if (_error != null) ...[
@@ -433,7 +554,10 @@ class _ConfirmCodePageState extends State<ConfirmCodePage> {
                   ],
                   if (_resent) ...[
                     const SizedBox(height: 12),
-                    const Text('認証コードを再送信しました', style: TextStyle(color: Colors.green)),
+                    const Text(
+                      '認証コードを再送信しました',
+                      style: TextStyle(color: Colors.green),
+                    ),
                   ],
                   const SizedBox(height: 24),
                   SizedBox(
@@ -442,10 +566,15 @@ class _ConfirmCodePageState extends State<ConfirmCodePage> {
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                               backgroundColor: theme.colorScheme.primary,
                               foregroundColor: theme.colorScheme.onPrimary,
-                              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              textStyle: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             onPressed: _confirm,
                             icon: const Icon(Icons.verified_user),
