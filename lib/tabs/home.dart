@@ -23,9 +23,27 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int _counter = 0;
+  // 初期化の時にUsersDefaultから所得して値を設定しないとウィジェットが更新されない
+  @override
+  void initState() {
+    super.initState();
+    _loadCounterFromIOS();
+  }
+
+  Future<void> _loadCounterFromIOS() async {
+    try {
+      final value = await platform.invokeMethod('getCounter');
+      setState(() {
+        _counter = value as int? ?? 0;
+      });
+    } catch (e) {
+      // エラー処理
+    }
+  }
+
   int? _steps;
 
-  static const platform = MethodChannel('com.example.widgetcount/counter');
+  static const platform = MethodChannel('com.example.progateSurfingHackathon/counter');
   
   Future<void> _saveCounterToIOS(int value) async {
     try{
@@ -52,7 +70,7 @@ class _HomeState extends State<Home> {
     setState(() {
       _counter++;
     });
-    await saveTodayStepsToIOS();
+    await _saveCounterToIOS(_counter);
   }
 
   @override

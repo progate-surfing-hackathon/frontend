@@ -7,50 +7,45 @@
 
 import WidgetKit
 import SwiftUI
+import AppIntents
 
 struct Provider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
+        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent(), counter: 0)
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
+        let counter = UserDefaults(suiteName: "group.com.example.progateSurfingHackathon")?.integer(forKey: "counter") ?? 0
+        return SimpleEntry(date: Date(), configuration: configuration, counter: counter)
     }
-    
+
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         var entries: [SimpleEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
+        let counter = UserDefaults(suiteName: "group.com.example.progateSurfingHackathon")?.integer(forKey: "counter") ?? 0
+        print("WidgetKit: timeline loaded counter=\(counter)")
         let currentDate = Date()
         for hourOffset in 0 ..< 5 {
             let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
+            let entry = SimpleEntry(date: entryDate, configuration: configuration, counter: counter)
             entries.append(entry)
         }
-
         return Timeline(entries: entries, policy: .atEnd)
     }
-
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
     let configuration: ConfigurationAppIntent
+    let counter: Int
 }
+
 
 struct isDrinkWidgetEntryView : View {
     var entry: Provider.Entry
 
     var body: some View {
         VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+            Text("Steps: \(entry.counter)")
         }
     }
 }
@@ -83,6 +78,6 @@ extension ConfigurationAppIntent {
 #Preview(as: .systemSmall) {
     isDrinkWidget()
 } timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
+    SimpleEntry(date: .now, configuration: .smiley, counter: 0)
+    SimpleEntry(date: .now, configuration: .starEyes, counter: 123)
 }
