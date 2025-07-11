@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../healthkit/healthkit.dart';
+
 
 class Home extends StatefulWidget {
   const Home({super.key, required this.title});
@@ -23,16 +25,34 @@ class _HomeState extends State<Home> {
   int _counter = 0;
   int? _steps;
 
-  Future<void> _incrementCounter() async {
-    setState(() {
-      _counter++;
-    });
-    // 歩数データ取得
+  static const platform = MethodChannel('com.example.widgetcount/counter');
+  
+  Future<void> _saveCounterToIOS(int value) async {
+    try{
+      print(value);
+      await platform.invokeMethod('saveCounter', {'value': value});
+    } catch (e){
+      // print(e);
+    }
+  }
+
+  Future<void> saveTodayStepsToIOS() async {
+    // 歩数を取得
     final steps = await fetchStepData();
     setState(() {
       _steps = steps;
     });
     print('steps: $steps');
+    if (steps != null) {
+      await _saveCounterToIOS(steps);
+    }
+  }
+
+  Future<void> _incrementCounter() async {
+    setState(() {
+      _counter++;
+    });
+    await saveTodayStepsToIOS();
   }
 
   @override
