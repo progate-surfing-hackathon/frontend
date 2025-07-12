@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart' as AmplifyAuthCognito;
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:progate_surfing_hackathon/utils/user_context.dart';
 import 'amplifyconfiguration.dart';
 import 'tabs/home.dart';
 import 'tabs/account.dart';
+import '../healthkit/healthkit.dart';
+import '../temperature/amedas.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -392,6 +396,10 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  final instance = UserContext();
+  int _counter = 0;
+  // 初期化の時にUsersDefaultから所得して値を設定しないとウィジェットが更新されない
+
   int _selectedIndex = 0;
 
   late final List<Widget> _widgetOptions;
@@ -399,10 +407,31 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCounterFromIOS();
+    _loadInitialData();
     _widgetOptions = <Widget>[
       Home(title: widget.title),
       const AccountPage(),
     ];
+  }
+
+  Future<void> _loadInitialData() async {
+    // 初期データの読み込み
+    await saveAmedas();
+    await saveTodayStepsToIOS();
+  }
+
+  static const platform = MethodChannel('com.example.progateSurfingHackathon/counter');
+
+  Future<void> _loadCounterFromIOS() async {
+    try {
+      final value = await platform.invokeMethod('getCounter');
+      setState(() {
+        _counter = value as int? ?? 0;
+      });
+    } catch (e) {
+      //print(e);
+    }
   }
 
   void _onItemTapped(int index) {
@@ -410,6 +439,46 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
   }
+
+  Future<void> _saveCounterToIOS(int value) async {
+    try{
+      print(value);
+      await platform.invokeMethod('saveCounter', {'value': value});
+    } catch (e){
+      // print(e);
+    }
+  }
+
+  Future<void> saveTodayStepsToIOS() async {
+    // 歩数を取得
+    final steps = await fetchStepData();
+    if (steps != null) {
+      setState(() {
+        instance.steps = steps;
+      });
+      print('steps: $steps');
+      await _saveCounterToIOS(steps);
+    }
+  }
+
+  Future<void> _incrementCounter() async {
+    setState(() {
+      _counter++;
+    });
+    await _saveCounterToIOS(_counter);
+  }
+  Future<void> saveAmedas() async {
+    final amedas = AmedasService();
+    try {
+      // fetchNearestAmedasDataはdoubleを返すため、直接代入可能
+      final res = await amedas.fetchNearestAmedasData();
+      instance.temp = res;
+      // 気象データはAmedasService内でログ出力される
+    } catch (e) {
+      safePrint('Error fetching weather data: $e');
+    }
+  }
+  
 
   @override
   Widget build(BuildContext context) {

@@ -7,32 +7,30 @@ class AmedasService {
   final String nearestAmedasUrl = "https://api.cultivationdata.net/nearest_amds";
 
   // メイン処理
-  Future<void> fetchNearestAmedasData() async {
+  Future<double> fetchNearestAmedasData() async {
     print("[Amedas] 現在地取得開始");
     final position = await _getCurrentLocation();
     if (position == null) {
-      print("[Amedas] 位置情報が取得できませんでした。");
-      return;
+      throw "[Amedas] 位置情報が取得できませんでした。";
     }
     print("[Amedas] 現在地取得成功: lat=${position.latitude}, lon=${position.longitude}");
 
     print("[Amedas] 最寄り観測所検索開始");
     final stationNo = await _getNearestStationNo(position.latitude, position.longitude);
     if (stationNo == null) {
-      print("[Amedas] 最寄りの観測所が見つかりませんでした。");
-      return;
+      throw "[Amedas] 最寄りの観測所が見つかりませんでした。";
     }
     print("[Amedas] 最寄り観測所番号: $stationNo");
 
     print("[Amedas] 最新アメダスデータ取得開始");
-    final weather = await _getLatestAmedasData(stationNo);
+    final weather = await getLatestAmedasData(stationNo);
     if (weather == null) {
-      print("[Amedas] アメダスデータが取得できませんでした。");
-      return;
+      throw "[Amedas] アメダスデータが取得できませんでした。";
     }
 
     print("[Amedas] 🌡️ 気温: ${weather['temp']} ℃");
     print("[Amedas] 💧 湿度: ${weather['humidity']} %");
+    return weather["temp"].toDouble();
   }
 
   // 現在地取得
@@ -82,7 +80,7 @@ class AmedasService {
   }
 
   // 最新アメダスデータ取得
-  Future<Map<String, dynamic>?> _getLatestAmedasData(String stationNo) async {
+  Future<Map<String, dynamic>?> getLatestAmedasData(String stationNo) async {
     final url = "https://api.cultivationdata.net/amds?no=$stationNo";
     print("[Amedas] 最新アメダスデータAPIリクエスト: $url");
     final res = await http.get(Uri.parse(url));
