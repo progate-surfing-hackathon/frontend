@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart' as AmplifyAuthCognito;
+import 'package:permission_handler/permission_handler.dart';
 import 'amplifyconfiguration.dart';
 import 'tabs/home.dart';
 import 'tabs/account.dart';
@@ -8,16 +9,76 @@ import 'tabs/account.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _configureAmplify();
+  await _requestLocationPermission();
   runApp(const MyApp());
 }
 
 Future<void> _configureAmplify() async {
   try {
-    final auth = AmplifyAuthCognito();
+    final auth = AmplifyAuthCognito.AmplifyAuthCognito();
     await Amplify.addPlugin(auth);
     await Amplify.configure(amplifyconfig);
   } catch (e) {
     safePrint('Amplify configure error: $e');
+  }
+}
+
+Future<void> _requestLocationPermission() async {
+  try {
+    // 位置情報の許可状態を確認
+    PermissionStatus status = await Permission.location.status;
+    
+    if (status.isDenied) {
+      // 許可されていない場合は許可を求める
+      status = await Permission.location.request();
+      
+      if (status.isPermanentlyDenied) {
+        // 永続的に拒否された場合は設定画面を開くことを提案
+        safePrint('Location permission is permanently denied');
+      } else if (status.isDenied) {
+        // 拒否された場合
+        safePrint('Location permission is denied');
+      } else if (status.isGranted) {
+        // 許可された場合
+        safePrint('Location permission is granted');
+      }
+    } else if (status.isGranted) {
+      // 既に許可されている場合
+      safePrint('Location permission is already granted');
+    } else if (status.isRestricted) {
+      // 制限されている場合
+      safePrint('Location permission is restricted');
+    }
+  } catch (e) {
+    safePrint('Error requesting location permission: $e');
+  }
+}
+
+// 位置情報の許可状態を確認するユーティリティ関数
+Future<bool> _isLocationPermissionGranted() async {
+  try {
+    PermissionStatus status = await Permission.location.status;
+    return status.isGranted;
+  } catch (e) {
+    safePrint('Error checking location permission status: $e');
+    return false;
+  }
+}
+
+// 位置情報の許可を求めるユーティリティ関数
+Future<bool> _requestLocationPermissionIfNeeded() async {
+  try {
+    PermissionStatus status = await Permission.location.status;
+    
+    if (status.isDenied) {
+      status = await Permission.location.request();
+      return status.isGranted;
+    }
+    
+    return status.isGranted;
+  } catch (e) {
+    safePrint('Error requesting location permission: $e');
+    return false;
   }
 }
 
@@ -51,6 +112,7 @@ class _AuthGateState extends State<AuthGate> {
   void initState() {
     super.initState();
     _checkAuth();
+    _checkLocationPermission();
   }
 
   Future<void> _checkAuth() async {
@@ -66,6 +128,52 @@ class _AuthGateState extends State<AuthGate> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _checkLocationPermission() async {
+    try {
+      PermissionStatus status = await Permission.location.status;
+      
+      if (status.isPermanentlyDenied && mounted) {
+        // 永続的に拒否された場合は設定画面を開くダイアログを表示
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showLocationPermissionDialog();
+        });
+      }
+    } catch (e) {
+      safePrint('Error checking location permission: $e');
+    }
+  }
+
+  void _showLocationPermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('位置情報の許可が必要です'),
+          content: const Text(
+            'このアプリは最寄りの気象観測所の天気情報を表示するために位置情報を使用します。\n\n'
+            '設定画面から位置情報の許可を有効にしてください。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('後で'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                openAppSettings();
+              },
+              child: const Text('設定を開く'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
