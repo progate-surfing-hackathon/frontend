@@ -1,19 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../healthkit/healthkit.dart';
+import '../temperature/amedas.dart';
 
 
 class Home extends StatefulWidget {
   const Home({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -23,11 +15,14 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int _counter = 0;
+  final amedas = AmedasService();
   // 初期化の時にUsersDefaultから所得して値を設定しないとウィジェットが更新されない
   @override
   void initState() {
+    print('init');
     super.initState();
     _loadCounterFromIOS();
+    amedas.fetchNearestAmedasData();
   }
 
   Future<void> _loadCounterFromIOS() async {
@@ -37,7 +32,7 @@ class _HomeState extends State<Home> {
         _counter = value as int? ?? 0;
       });
     } catch (e) {
-      // エラー処理
+      //print(e);
     }
   }
 
