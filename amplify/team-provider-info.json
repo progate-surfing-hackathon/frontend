@@ -16,5 +16,23 @@
         "progatesurfingapp7dfa3c4f": {}
       }
     }
+  },
+  "surfing": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-progatesurfingapp-surfing-1cacf-authRole",
+      "UnauthRoleArn": "arn:aws:iam::281844808229:role/amplify-progatesurfingapp-surfing-1cacf-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::281844808229:role/amplify-progatesurfingapp-surfing-1cacf-authRole",
+      "Region": "ap-northeast-1",
+      "DeploymentBucketName": "amplify-progatesurfingapp-surfing-1cacf-deployment",
+      "UnauthRoleName": "amplify-progatesurfingapp-surfing-1cacf-unauthRole",
+      "StackName": "amplify-progatesurfingapp-surfing-1cacf",
+      "StackId": "arn:aws:cloudformation:ap-northeast-1:281844808229:stack/amplify-progatesurfingapp-surfing-1cacf/021bd350-5ecd-11f0-8d0e-0e8246ad5ccd",
+      "AmplifyAppId": "d153w5r2yp51h5"
+    },
+    "categories": {
+      "auth": {
+        "progatesurfingapp7dfa3c4f": {}
+      }
+    }
   }
 }
