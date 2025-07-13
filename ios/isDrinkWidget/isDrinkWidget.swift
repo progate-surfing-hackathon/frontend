@@ -15,13 +15,13 @@ struct Provider: AppIntentTimelineProvider {
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        let counter = UserDefaults(suiteName: "group.com.example.progateSurfingHackathon")?.integer(forKey: "counter") ?? 0
+        let counter = UserDefaults(suiteName: "group.progateSurfing.hackathon")?.integer(forKey: "counter") ?? 0
         return SimpleEntry(date: Date(), configuration: configuration, counter: counter)
     }
 
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         var entries: [SimpleEntry] = []
-        let counter = UserDefaults(suiteName: "group.com.example.progateSurfingHackathon")?.integer(forKey: "counter") ?? 0
+        let counter = UserDefaults(suiteName: "group.com.progateSurfing.hackathon")?.integer(forKey: "counter") ?? 0
         print("WidgetKit: timeline loaded counter=\(counter)")
         let currentDate = Date()
         for hourOffset in 0 ..< 5 {

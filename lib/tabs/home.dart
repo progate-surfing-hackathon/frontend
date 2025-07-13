@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:progate_surfing_hackathon/utils/user_context.dart';
 import '../healthkit/healthkit.dart';
-
+import 'package:progate_surfing_hackathon/components/current_status_card.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key, required this.title});
@@ -27,6 +28,7 @@ class _HomeState extends State<Home> {
   void initState() {
     super.initState();
   }
+  final instance = UserContext();
 
   int? _steps;
 
@@ -56,6 +58,20 @@ class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          setState((){
+            instance.paidMoney += 100;
+            Future<void> _run()async{
+              await platform.invokeMethod('saveCounter', {'value': instance.paidMoney});
+            } 
+            _run();
+          });
+
+        },
+        heroTag: "TabHomeFloatingButton",
+        child:Icon(Icons.add)
+      ),
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
@@ -72,12 +88,7 @@ class _HomeState extends State<Home> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  const Text('You have pushed the button this many times:'),
-                  const SizedBox(height: 16),
-                  Text(
-                    _steps != null ? 'Steps today: $_steps' : 'Steps not loaded',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                  CurrentStatusCard()
                 ],
               ),
             ),

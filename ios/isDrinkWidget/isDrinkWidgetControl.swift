@@ -10,7 +10,7 @@ import SwiftUI
 import WidgetKit
 
 struct isDrinkWidgetControl: ControlWidget {
-    static let kind: String = "com.example.progateSurfingHackathon.isDrinkWidget"
+    static let kind: String = "com.progateSurfing.hackathon.isDrinkWidget"
 
     var body: some ControlWidgetConfiguration {
         AppIntentControlConfiguration(

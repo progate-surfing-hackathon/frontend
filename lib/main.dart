@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart' as AmplifyAuthCognito;
+import 'package:amplify_api/amplify_api.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:progate_surfing_hackathon/utils/user_context.dart';
+import 'package:progate_surfing_hackathon/utils/activity_service.dart';
 import 'amplifyconfiguration.dart';
 import 'tabs/home.dart';
 import 'tabs/account.dart';
 import '../healthkit/healthkit.dart';
 import '../temperature/amedas.dart';
+import 'package:health/health.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,8 +23,14 @@ void main() async {
 Future<void> _configureAmplify() async {
   try {
     final auth = AmplifyAuthCognito.AmplifyAuthCognito();
+    final api = AmplifyAPI();
     await Amplify.addPlugin(auth);
+    await Amplify.addPlugin(api);
     await Amplify.configure(amplifyconfig);
+    
+    // ActivityServiceを使用してActivityデータを取得
+    final activities = await ActivityService.getActivitiesByAuthor("Taro Yamada");
+    print('Configured Amplify and fetched activities: $activities');
   } catch (e) {
     safePrint('Amplify configure error: $e');
   }
@@ -407,12 +416,19 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCounterFromIOS();
-    _loadInitialData();
+    _initializeData();
     _widgetOptions = <Widget>[
       Home(title: widget.title),
       const AccountPage(),
     ];
+  }
+  static const platform = MethodChannel('com.example.progateSurfingHackathon/counter');
+
+  Future<void> _initializeData() async {
+    // まず保存されたカウンター値を読み込み
+    await _loadCounterFromIOS();
+    // その後で初期データを読み込み
+    await _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
@@ -421,16 +437,24 @@ class _MainScreenState extends State<MainScreen> {
     await saveTodayStepsToIOS();
   }
 
-  static const platform = MethodChannel('com.example.progateSurfingHackathon/counter');
 
   Future<void> _loadCounterFromIOS() async {
+    print('_loadCounterFromIOS: Starting to load counter from iOS...');
     try {
       final value = await platform.invokeMethod('getCounter');
+      final intValue = value as int? ?? 0;
       setState(() {
-        _counter = value as int? ?? 0;
+        _counter = intValue;
+        // UserContextのpaidMoneyも更新
+        instance.paidMoney = intValue;
       });
+      // UserContextの変更を通知
+      instance.notifyListeners();
+      print('_loadCounterFromIOS: Successfully loaded counter: $intValue');
+      print('_loadCounterFromIOS: Updated instance.paidMoney to: ${instance.paidMoney}');
     } catch (e) {
-      //print(e);
+      print('_loadCounterFromIOS: Error loading counter from iOS: $e');
+      print('_loadCounterFromIOS: Keeping default values - _counter: $_counter, instance.paidMoney: ${instance.paidMoney}');
     }
   }
 
@@ -441,23 +465,53 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _saveCounterToIOS(int value) async {
-    try{
-      print(value);
+    try {
+      print('Saving counter value: $value');
       await platform.invokeMethod('saveCounter', {'value': value});
-    } catch (e){
-      // print(e);
+      // UserContextのpaidMoneyも更新
+      instance.paidMoney = value;
+    } catch (e) {
+      print('Error saving counter: $e');
     }
   }
 
   Future<void> saveTodayStepsToIOS() async {
+    print('saveTodayStepsToIOS: Starting to fetch step data...');
+    
+    // HealthKitの権限を確認
+    final health = Health();
+    bool hasPermission = await health.hasPermissions([HealthDataType.STEPS]) ?? false;
+    print('saveTodayStepsToIOS: HealthKit permission status: $hasPermission');
+    
+    // 権限がない場合はリクエスト
+    if (!hasPermission) {
+      print('saveTodayStepsToIOS: Requesting HealthKit permission...');
+      hasPermission = await health.requestAuthorization([HealthDataType.STEPS]) ?? false;
+      print('saveTodayStepsToIOS: HealthKit permission after request: $hasPermission');
+    }
+    
     // 歩数を取得
     final steps = await fetchStepData();
-    if (steps != null) {
+    print('saveTodayStepsToIOS: fetchStepData returned: $steps');
+    
+    if (steps != null && steps > 0) {
       setState(() {
         instance.steps = steps;
       });
-      print('steps: $steps');
+      print('saveTodayStepsToIOS: Steps updated to: $steps');
+      
+      // 歩数を保存し、同時にpaidMoneyも更新
       await _saveCounterToIOS(steps);
+      instance.paidMoney = steps;
+      print('saveTodayStepsToIOS: Counter and paidMoney updated to: $steps');
+    } else if (steps == 0) {
+      print('saveTodayStepsToIOS: Step data is 0, keeping existing counter value: ${instance.paidMoney}');
+      // 歩数が0の場合は、既存の値を保持（新しい日が始まったばかりの可能性）
+      // 新しい値で上書きしない
+    } else {
+      print('saveTodayStepsToIOS: No step data available, keeping existing counter value: ${instance.paidMoney}');
+      // 歩数データが取得できない場合は、既存の値を保持
+      // 新しい値で上書きしない
     }
   }
 

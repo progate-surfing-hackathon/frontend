@@ -12,7 +12,7 @@ class UserContext extends ChangeNotifier {
     return _instance;
   }
 
-  late double temp;
+  double temp = 0.0;
   int steps = 0;
   int paidMoney = 0;
 }

@@ -36,6 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   amplify_auth_cognito: ^2.6.4
   amplify_flutter: ^2.6.4
+  amplify_api: ^2.6.4
+  graphql_flutter: ^5.1.2
   home_widget: ^0.8.0
   health: ^13.1.1
   geolocator: ^14.0.2

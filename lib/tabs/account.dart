@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:progate_surfing_hackathon/utils/user_context.dart';
-import 'dart:convert';
-import '../healthkit/healthkit.dart';
-import '../temperature/amedas.dart';
+import 'package:progate_surfing_hackathon/components/current_status_card.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -17,21 +12,13 @@ class AccountPage extends StatefulWidget {
 
 class _AccountPageState extends State<AccountPage> {
   AuthUser? _currentUser;
-  int? _steps;
-  Map<String, dynamic>? _weatherData;
   bool _isLoadingUser = true;
-  bool _isLoadingSteps = true;
-  bool _isLoadingWeather = true;
   String? _userError;
-  String? _stepsError;
-  String? _weatherError;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _loadStepsData();
-    _loadWeatherData();
   }
 
   final instance = UserContext();
@@ -51,120 +38,6 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
-  Future<void> _loadStepsData() async {
-    try {
-      bool hasLocationPermission = await _isLocationPermissionGranted();
-      if (!hasLocationPermission) {
-        hasLocationPermission = await _requestLocationPermissionIfNeeded();
-      }
-
-      if (hasLocationPermission) {
-        final steps = await fetchStepData();
-        setState(() {
-          _steps = steps;
-          _isLoadingSteps = false;
-        });
-      } else {
-        setState(() {
-          _stepsError = '位置情報の許可が必要です';
-          _isLoadingSteps = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _stepsError = e.toString();
-        _isLoadingSteps = false;
-      });
-    }
-  }
-
-  Future<void> _loadWeatherData() async {
-    try {
-      bool hasLocationPermission = await _isLocationPermissionGranted();
-      if (!hasLocationPermission) {
-        hasLocationPermission = await _requestLocationPermissionIfNeeded();
-      }
-
-      if (hasLocationPermission) {
-        final weather = await _getWeatherData();
-        setState(() {
-          print("OK");
-          _weatherData = weather;
-          print(weather);
-          _isLoadingWeather = false;
-        });
-      } else {
-        setState(() {
-          _weatherError = '位置情報の許可が必要です';
-          _isLoadingWeather = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _weatherError = e.toString();
-        _isLoadingWeather = false;
-      });
-    }
-  }
-
-  Future<Map<String, dynamic>?> _getWeatherData() async {
-    try {
-      final position = await _getCurrentLocation();
-      if (position == null) return null;
-
-      final stationNo = await _getNearestStationNo(position.latitude, position.longitude);
-      if (stationNo == null) return null;
-
-      return await _getLatestAmedasData(stationNo);
-    } catch (e) {
-      safePrint('Error getting weather data: $e');
-      return null;
-    }
-  }
-
-  // AmedasServiceの内部メソッドをコピー
-  Future<Position?> _getCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    LocationPermission permission = await Geolocator.checkPermission();
-
-    if (!serviceEnabled) return null;
-    if (permission == LocationPermission.deniedForever) return null;
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission != LocationPermission.always && permission != LocationPermission.whileInUse) {
-        return null;
-      }
-    }
-
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-  }
-
-  Future<String?> _getNearestStationNo(double lat, double lon) async {
-    final url = "https://api.cultivationdata.net/nearest_amds?lat=$lat&lon=$lon";
-    final res = await http.get(Uri.parse(url));
-    if (res.statusCode != 200) return null;
-    
-    final jsonData = json.decode(utf8.decode(res.bodyBytes));
-    if (jsonData == null || jsonData['0'] == null || jsonData['0']['obs_number'] == null) {
-      return null;
-    }
-    return jsonData['0']['obs_number'].toString();
-  }
-
-  Future<Map<String, dynamic>?> _getLatestAmedasData(String stationNo) async {
-    final url = "https://api.cultivationdata.net/amds?no=$stationNo";
-    final res = await http.get(Uri.parse(url));
-    if (res.statusCode != 200) return null;
-    
-    final jsonData = json.decode(utf8.decode(res.bodyBytes));
-    if (jsonData == null || jsonData['temp'] == null || jsonData['humidity'] == null) {
-      return null;
-    }
-    return {
-      'temp': jsonData['temp'][0],
-      'humidity': jsonData['humidity'][0],
-    };
-  }
 
   Future<AuthUser?> _getCurrentUser() async {
     try {
@@ -175,31 +48,6 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
-  Future<bool> _isLocationPermissionGranted() async {
-    try {
-      PermissionStatus status = await Permission.location.status;
-      return status.isGranted;
-    } catch (e) {
-      safePrint('Error checking location permission status: $e');
-      return false;
-    }
-  }
-
-  Future<bool> _requestLocationPermissionIfNeeded() async {
-    try {
-      PermissionStatus status = await Permission.location.status;
-      
-      if (status.isDenied) {
-        status = await Permission.location.request();
-        return status.isGranted;
-      }
-      
-      return status.isGranted;
-    } catch (e) {
-      safePrint('Error requesting location permission: $e');
-      return false;
-    }
-  }
 
   Future<void> _signOut(BuildContext context) async {
     try {
@@ -217,18 +65,7 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
-  Future<void> _refreshData() async {
-    setState(() {
-      _isLoadingSteps = true;
-      _isLoadingWeather = true;
-      _stepsError = null;
-      _weatherError = null;
-    });
-    await _loadStepsData();
-    await _loadWeatherData();
-  }
-
-  
+  Future<void> _refreshData() async {}
 
   @override
   Widget build(BuildContext context) {
@@ -375,63 +212,7 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Widget _buildCurrentDataCard(ThemeData theme) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.thermostat,
-                  size: 32,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '現在の状況',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            // 気温
-            Row(
-              children: [
-                Icon(Icons.wb_sunny, color: Colors.orange),
-                const SizedBox(width: 8),
-                Text('気温: ${instance.temp}', style: theme.textTheme.bodyLarge),
-              ],
-            ),
-            
-            const SizedBox(height: 12),
-            // 歩数
-            Row(
-              children: [
-                Icon(Icons.directions_walk, color: Colors.green),
-                const SizedBox(width: 8),
-                Text('今日の歩数: ${instance.steps}', style: theme.textTheme.bodyLarge),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // 歩数
-            Row(
-              children: [
-                Icon(Icons.currency_yen, color: Colors.amber),
-                const SizedBox(width: 8),
-                Text('今日使った金額: ${instance.paidMoney}', style: theme.textTheme.bodyLarge),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    return CurrentStatusCard();
   }
 
   Widget _buildAccountSettingsSection(ThemeData theme) {
@@ -515,32 +296,6 @@ class _AccountPageState extends State<AccountPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
