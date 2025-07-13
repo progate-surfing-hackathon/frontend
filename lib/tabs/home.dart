@@ -66,6 +66,7 @@ class _HomeState extends State<Home> {
       _counter++;
     });
     await _saveCounterToIOS(_counter);
+    await saveTodayStepsToIOS();
   }
 
   @override
