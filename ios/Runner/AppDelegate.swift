@@ -22,7 +22,7 @@ import WidgetKit
             let value = args["value"] as? Int {
               // UserDefaultsに値を保存
               print("iOS: saveCounter called with value: \(value)")
-              let userDefaults = UserDefaults(suiteName: "group.com.example.progateSurfingHackathon")
+              let userDefaults = UserDefaults(suiteName: "group.com.progateSurfing.hackathon")
               userDefaults?.set(value, forKey: "counter")
               let savedValue = userDefaults?.integer(forKey: "counter") ?? -1
               userDefaults?.synchronize()
@@ -32,7 +32,7 @@ import WidgetKit
             result(FlutterError(code: "INVALID_ARGUMENT", message: "Invalid argument", details: nil))
           }
         } else if call.method == "getCounter" {
-          let userDefaults = UserDefaults(suiteName: "group.com.example.progateSurfingHackathon")
+          let userDefaults = UserDefaults(suiteName: "group.com.progateSurfing.hackathon")
           let value = userDefaults?.integer(forKey: "counter") ?? 0
           result(value)
         } else {
