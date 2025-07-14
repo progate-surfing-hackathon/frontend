@@ -1,0 +1,69 @@
+input AMPLIFY {
+ engine: String = "mysql"  
+}
+
+type Activity {
+  id: String!
+  author: String!
+  temp: Int!
+  steps: Int!
+  paid_monney: Int!
+  created_at: AWSDateTime!
+}
+
+type User {
+  id: String!
+  border: Int!
+  notification_token: String!
+}
+
+type Query {
+  getActivities: [Activity]
+  getActivitiesByAuthor(author: String!): [Activity]
+  getUsers: [User]
+}
+
+type Mutation {
+  createActivity(input: CreateActivityInput!): Activity
+  updateActivity(input: UpdateActivityInput!): Activity
+  deleteActivity(input: DeleteActivityInput!): Activity
+  createUser(input: CreateUserInput!): User
+  updateUser(input: UpdateUserInput!): User
+  deleteUser(input: DeleteUserInput!): User
+}
+
+input CreateActivityInput {
+  author: String!
+  temp: Int!
+  steps: Int!
+  paid_monney: Int!
+  created_at: AWSDateTime!
+}
+
+input UpdateActivityInput {
+  id: String!
+  author: String
+  temp: Int
+  steps: Int
+  paid_monney: Int
+  created_at: AWSDateTime
+}
+
+input DeleteActivityInput {
+  id: String!
+}
+
+input CreateUserInput {
+  border: Int!
+  notification_token: String!
+}
+
+input UpdateUserInput {
+  id: String!
+  border: Int
+  notification_token: String
+}
+
+input DeleteUserInput {
+  id: String!
+}

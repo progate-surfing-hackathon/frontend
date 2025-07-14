@@ -32,6 +32,9 @@
     "categories": {
       "auth": {
         "progatesurfingapp7dfa3c4f": {}
+      },
+      "api": {
+        "progatesurfingapp": {}
       }
     }
   }
