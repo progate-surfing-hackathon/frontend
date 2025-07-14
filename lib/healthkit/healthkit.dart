@@ -20,6 +20,16 @@ Future<int?> fetchStepData() async {
         await health.requestAuthorization([HealthDataType.STEPS]);
   }
 
+
+  bool isHealthConnectAvailable = await health.isHealthConnectAvailable();
+
+  if (isHealthConnectAvailable) {
+    print('Health Connect is available');
+  } else {
+    print('Health Connect is not available, using Google Fit');
+  }
+
+
   if (stepsPermission) {
     try {
       steps = await health.getTotalStepsInInterval(midnight, now,
